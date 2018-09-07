@@ -4,4 +4,6 @@ before_install:
   - "sh -e /etc/init.d/xvfb start"
 jdk:
   - oraclejdk8
-script: "mvn clean test"
+script: 
+  - "cd project"
+  - "mvn clean test"
