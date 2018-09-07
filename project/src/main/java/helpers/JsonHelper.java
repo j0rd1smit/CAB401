@@ -2,6 +2,7 @@ package helpers;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 
@@ -33,5 +34,9 @@ public class JsonHelper {
 
     public synchronized <E> E read(Class<E> clazz, String filePath) throws IOException {
         return mapper.readValue(new File(filePath), clazz);
+    }
+
+    public synchronized <E> E readGeneric(TypeReference<E> typeReference, String filePath) throws IOException {
+        return mapper.readValue(new File(filePath), typeReference);
     }
 }

@@ -1,8 +1,10 @@
 package qut;
 
 import edu.au.jacobi.pattern.Match;
+import lombok.EqualsAndHashCode;
 
 
+@EqualsAndHashCode
 public class Sigma70Consensus {
     private int[][] _35Count = new int[6][4];
     private int[][] _10Count = new int[6][4];

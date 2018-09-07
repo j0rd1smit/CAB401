@@ -6,6 +6,7 @@ import jaligner.BLOSUM62;
 import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
+import lombok.Getter;
 
 import java.io.*;
 import java.util.*;
@@ -13,6 +14,7 @@ import java.util.*;
 public class Sequential {
     private final static String OUT_FILE_PATH_FORMAT = "result_%s.txt";
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
+    @Getter
     private Map<String, Sigma70Consensus> consensus = new HashMap<>();
     private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
     private byte[] complement = new byte['z'];
@@ -39,7 +41,7 @@ public class Sequential {
 
         for (String filename : ListGenbankFiles(dir)) {
             System.out.println(filename);
-            GenbankRecord record = Parse(filename);
+            GenbankRecord record = Parse(filename); //TODO IO
 
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
@@ -64,6 +66,7 @@ public class Sequential {
         for (Map.Entry<String, Sigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
+
 
         //writeResultToFile();
     }
