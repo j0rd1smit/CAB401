@@ -18,6 +18,8 @@
 *.zip
 *.tar.gz
 *.rar
+!jacobi.jar
+
 #intelij
 /.idea
 /target
