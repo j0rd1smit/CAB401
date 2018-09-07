@@ -29,4 +29,12 @@ public class FunctionalTest {
 
         assertThat(result).isEqualTo(expected);
     }
+
+    /**
+     * Verifies that
+     */
+    @Test
+    void _Test() {
+        assertThat(true).isFalse();
+    }
 }
