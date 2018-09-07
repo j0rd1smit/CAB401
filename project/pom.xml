@@ -25,6 +25,23 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/jacobi.jar</systemPath>
         </dependency>
+
+        <!-- compile time-->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.2</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--run time helpers-->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.9.5</version>
+        </dependency>
+
+
         <!-- test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -44,6 +61,8 @@
             <version>3.11.1</version>
             <scope>test</scope>
         </dependency>
+
+
     </dependencies>
 
 

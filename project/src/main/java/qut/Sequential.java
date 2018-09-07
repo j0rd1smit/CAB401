@@ -11,13 +11,13 @@ import java.io.*;
 import java.util.*;
 
 public class Sequential {
-    private static final String OUT_FILE_PATH_FORMAT = "result_%s.txt";
+    private final static String OUT_FILE_PATH_FORMAT = "result_%s.txt";
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
-    private static Map<String, Sigma70Consensus> consensus = new HashMap<>();
+    private Map<String, Sigma70Consensus> consensus = new HashMap<>();
     private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
-    private static byte[] complement = new byte['z'];
+    private byte[] complement = new byte['z'];
 
-    static {
+    public Sequential() {
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -28,11 +28,12 @@ public class Sequential {
         complement['a'] = 't';
     }
 
+
     public static void main(String[] args) throws IOException {
-        run("referenceGenes.list", "Ecoli");
+        new Sequential().run("referenceGenes.list", "Ecoli");
     }
 
-    private static void run(String referenceFile, String dir) throws IOException {
+    public void run(String referenceFile, String dir) throws IOException {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
 
@@ -64,11 +65,11 @@ public class Sequential {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
 
-        writeResultToFile();
+        //writeResultToFile();
     }
 
 
-    private static List<Gene> ParseReferenceGenes(String referenceFile) throws IOException {
+    private List<Gene> ParseReferenceGenes(String referenceFile) throws IOException {
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(referenceFile)));
         List<Gene> referenceGenes = new ArrayList<>();
         while (true) {
@@ -104,7 +105,7 @@ public class Sequential {
         }
     }
 
-    private static GenbankRecord Parse(String file) throws IOException {
+    private GenbankRecord Parse(String file) throws IOException {
         GenbankRecord record = new GenbankRecord();
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
         record.Parse(reader);
@@ -113,13 +114,13 @@ public class Sequential {
     }
 
     //TODO
-    private static boolean Homologous(PeptideSequence A, PeptideSequence B) {
+    private boolean Homologous(PeptideSequence A, PeptideSequence B) {
         return SmithWatermanGotoh
                 .align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f)
                 .calculateScore() >= 60;
     }
 
-    private static NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene) {
+    private NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene) {
         int upStreamDistance = 250;
         if (gene.location < upStreamDistance) {
             upStreamDistance = gene.location - 1;
@@ -139,11 +140,11 @@ public class Sequential {
         }
     }
 
-    private static Match PredictPromoter(NucleotideSequence upStreamRegion) {
+    private Match PredictPromoter(NucleotideSequence upStreamRegion) {
         return BioPatterns.getBestMatch(sigma70_pattern, upStreamRegion.toString());
     }
 
-    private static void writeResultToFile() throws IOException {
+    private void writeResultToFile() throws IOException {
         FileWriter fileWriter = new FileWriter(String.format(OUT_FILE_PATH_FORMAT, System.currentTimeMillis()));
         PrintWriter printWriter = new PrintWriter(fileWriter);
 
