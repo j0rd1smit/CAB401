@@ -22,6 +22,7 @@
         <dependency>
             <groupId>edu.au.jacobi</groupId>
             <artifactId>jacobi</artifactId>
+            <version>1.0</version>
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/jacobi.jar</systemPath>
         </dependency>
