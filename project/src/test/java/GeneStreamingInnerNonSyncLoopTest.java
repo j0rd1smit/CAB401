@@ -1,5 +1,6 @@
 import lombok.Getter;
 import qut.ISequential;
+import qut.versions.GeneStreamingInnerNonSyncLoop;
 import qut.versions.GeneStreamingMidLoop;
 
 /**
@@ -10,5 +11,5 @@ import qut.versions.GeneStreamingMidLoop;
 public class GeneStreamingInnerNonSyncLoopTest extends AbstractFunctionalTest {
 
     @Getter
-    private ISequential iSequential = new GeneStreamingMidLoop();
+    private ISequential iSequential = new GeneStreamingInnerNonSyncLoop();
 }
