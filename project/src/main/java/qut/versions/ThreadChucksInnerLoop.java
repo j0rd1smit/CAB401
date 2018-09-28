@@ -1,4 +1,4 @@
-package qut;
+package qut.versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -7,18 +7,27 @@ import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
 import lombok.Getter;
+import lombok.SneakyThrows;
+import qut.*;
 
 import java.io.*;
 import java.util.*;
 
-public class Sequential implements ISequential {
+/**
+ * TODO Explanation
+ *
+ * @author Jordi Smit on 28-9-2018.
+ */
+public class ThreadChucksInnerLoop implements ISequential<SynchronizedSigma70Consensus> {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
-    private Map<String, Sigma70Consensus> consensus = new HashMap<>();
-    private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
+    private Map<String, SynchronizedSigma70Consensus> consensus = new HashMap<>();
+    private static ThreadLocal<Series> sigma70_pattern = ThreadLocal.withInitial(() -> Sigma70Definition.getSeriesAll_Unanchored(0.7));
     private byte[] complement = new byte['z'];
 
-    public Sequential() {
+    private final int numberOfThreads;
+
+    public ThreadChucksInnerLoop(int numberOfThreads) {
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -27,14 +36,16 @@ public class Sequential implements ISequential {
         complement['t'] = 'a';
         complement['A'] = 'T';
         complement['a'] = 't';
+        this.numberOfThreads = numberOfThreads;
     }
 
 
     public static void main(String[] args) throws IOException {
-        new Sequential().run("referenceGenes.list", "Ecoli");
+        new ThreadChucksInnerLoop(8).run("referenceGenes.list", "Ecoli");
     }
 
     @Override
+    @SneakyThrows
     public void run(String referenceFile, String dir) throws IOException {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
@@ -46,16 +57,34 @@ public class Sequential implements ISequential {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
 
-                for (Gene gene : record.genes) {
-                    if (Homologous(gene.sequence, referenceGene.sequence)) {
-                        NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
-                        Match prediction = PredictPromoter(upStreamRegion);
+                List<Thread> threads = new ArrayList<>();
+                int total = record.genes.size();
+                int blockSize = (total + (numberOfThreads -1)) / numberOfThreads;
 
-                        if (prediction != null) {
-                            consensus.get(referenceGene.name).addMatch(prediction);
-                            consensus.get("all").addMatch(prediction);
+                for (int i = 0; i < numberOfThreads; i++) {
+                    int startIndex =  Math.min(total, i * blockSize);
+                    int endIndex = Math.min(total, startIndex + blockSize);
+
+                    Thread thread = new Thread(() -> {
+                        for (Gene gene : record.genes.subList(startIndex, endIndex)) {
+                            if (Homologous(gene.sequence, referenceGene.sequence)) {
+                                NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
+                                Match prediction = PredictPromoter(upStreamRegion);
+
+                                if (prediction != null) {
+                                    consensus.get(referenceGene.name).addMatch(prediction);
+                                    consensus.get("all").addMatch(prediction);
+                                }
+                            }
                         }
-                    }
+                    });
+
+                    threads.add(thread);
+                    thread.start();
+                }
+
+                for (Thread thread : threads) {
+                    thread.join();
                 }
             }
         }
@@ -63,7 +92,7 @@ public class Sequential implements ISequential {
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
 
-        for (Map.Entry<String, Sigma70Consensus> entry : consensus.entrySet()) {
+        for (Map.Entry<String, SynchronizedSigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
     }
@@ -79,9 +108,9 @@ public class Sequential implements ISequential {
             }
             String sequence = reader.readLine();
             referenceGenes.add(new Gene(name, 0, 0, sequence));
-            consensus.put(name, new Sigma70Consensus());
+            consensus.put(name, new SynchronizedSigma70Consensus());
         }
-        consensus.put("all", new Sigma70Consensus());
+        consensus.put("all", new SynchronizedSigma70Consensus());
         reader.close();
         return referenceGenes;
     }
@@ -140,7 +169,7 @@ public class Sequential implements ISequential {
     }
 
     private Match PredictPromoter(NucleotideSequence upStreamRegion) {
-        return BioPatterns.getBestMatch(sigma70_pattern, upStreamRegion.toString());
+        return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
     }
 
 }

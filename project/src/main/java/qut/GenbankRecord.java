@@ -10,7 +10,7 @@ public class GenbankRecord {
     public List<Gene> genes = new ArrayList<Gene>();
 
     public boolean Parse(BufferedReader reader) throws IOException {
-        genes = Gene.ParseGenes(reader);
+        genes = Gene.parseGenes(reader);
         if (genes == null || genes.size() == 0) // EOF
         {
             return false;

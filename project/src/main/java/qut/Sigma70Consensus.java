@@ -57,6 +57,7 @@ public class Sigma70Consensus {
         addMatch(match);
     }
 
+    //flow dependency
     public void addMatch(Match match) {
         predictions += 1;
         gapTotal += match.getSubMatch(1).calcLength();

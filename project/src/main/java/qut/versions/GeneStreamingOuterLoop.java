@@ -1,4 +1,4 @@
-package qut;
+package qut.versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -7,18 +7,25 @@ import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
 import lombok.Getter;
+import qut.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class Sequential implements ISequential {
+/**
+ * TODO Explanation
+ *
+ * @author Jordi Smit on 27-9-2018.
+ */
+public class GeneStreamingOuterLoop implements ISequential<SynchronizedSigma70Consensus>  {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
-    private Map<String, Sigma70Consensus> consensus = new HashMap<>();
-    private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
+    private Map<String, SynchronizedSigma70Consensus> consensus = new ConcurrentHashMap<>();
+    private static ThreadLocal<Series> sigma70_pattern =ThreadLocal.withInitial(() ->  Sigma70Definition.getSeriesAll_Unanchored(0.7));
     private byte[] complement = new byte['z'];
 
-    public Sequential() {
+    public GeneStreamingOuterLoop() {
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -31,7 +38,7 @@ public class Sequential implements ISequential {
 
 
     public static void main(String[] args) throws IOException {
-        new Sequential().run("referenceGenes.list", "Ecoli");
+        new GeneStreamingOuterLoop().run("referenceGenes.list", "Ecoli");
     }
 
     @Override
@@ -39,9 +46,16 @@ public class Sequential implements ISequential {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
 
-        for (String filename : ListGenbankFiles(dir)) {
+        //for (String filename : ListGenbankFiles(dir)) {
+        ListGenbankFiles(dir).parallelStream().forEach(filename -> {
+
             System.out.println(filename);
-            GenbankRecord record = Parse(filename);
+            GenbankRecord record = null;
+            try {
+                record = Parse(filename);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
 
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
@@ -58,12 +72,12 @@ public class Sequential implements ISequential {
                     }
                 }
             }
-        }
+        });
 
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
 
-        for (Map.Entry<String, Sigma70Consensus> entry : consensus.entrySet()) {
+        for (Map.Entry<String, SynchronizedSigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
     }
@@ -79,9 +93,9 @@ public class Sequential implements ISequential {
             }
             String sequence = reader.readLine();
             referenceGenes.add(new Gene(name, 0, 0, sequence));
-            consensus.put(name, new Sigma70Consensus());
+            consensus.put(name, new SynchronizedSigma70Consensus());
         }
-        consensus.put("all", new Sigma70Consensus());
+        consensus.put("all", new SynchronizedSigma70Consensus());
         reader.close();
         return referenceGenes;
     }
@@ -140,7 +154,6 @@ public class Sequential implements ISequential {
     }
 
     private Match PredictPromoter(NucleotideSequence upStreamRegion) {
-        return BioPatterns.getBestMatch(sigma70_pattern, upStreamRegion.toString());
+        return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
     }
-
 }

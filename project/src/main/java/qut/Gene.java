@@ -22,7 +22,7 @@ public class Gene {
         this.sequence = new PeptideSequence(sequence);
     }
 
-    public static List<Gene> ParseGenes(BufferedReader reader) throws IOException {
+    public static List<Gene> parseGenes(BufferedReader reader) throws IOException {
         List<Gene> genes = new ArrayList<Gene>();
 
         // loop through all features(genes) until we come to ORIGIN marking start of DNA

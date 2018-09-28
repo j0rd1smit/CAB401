@@ -1,4 +1,4 @@
-package qut;
+package qut.versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -7,18 +7,26 @@ import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
 import lombok.Getter;
+import lombok.SneakyThrows;
+import qut.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
-public class Sequential implements ISequential {
+/**
+ * TODO Explanation
+ *
+ * @author Jordi Smit on 28-9-2018.
+ */
+public class Reordering implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
     private Map<String, Sigma70Consensus> consensus = new HashMap<>();
     private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
     private byte[] complement = new byte['z'];
 
-    public Sequential() {
+    public Reordering() {
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -31,13 +39,15 @@ public class Sequential implements ISequential {
 
 
     public static void main(String[] args) throws IOException {
-        new Sequential().run("referenceGenes.list", "Ecoli");
+        new Reordering().run("referenceGenes.list", "Ecoli");
     }
 
     @Override
     public void run(String referenceFile, String dir) throws IOException {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
+        List<GenbankRecord> genbankRecords = ListGenbankFiles(dir).parallelStream().map(this::Parse).collect(Collectors.toList());
+
 
         for (String filename : ListGenbankFiles(dir)) {
             System.out.println(filename);
@@ -105,7 +115,8 @@ public class Sequential implements ISequential {
         }
     }
 
-    private GenbankRecord Parse(String file) throws IOException {
+    @SneakyThrows
+    private GenbankRecord Parse(String file) {
         GenbankRecord record = new GenbankRecord();
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
         record.Parse(reader);

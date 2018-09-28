@@ -49,7 +49,6 @@ public class SmithWatermanGotoh {
      * @see Sequence
      * @see Matrix
      */
-    //TODO 92% of the time
     public static Alignment align(Sequence sequence1, Sequence sequence2, Matrix matrix,
                                   float openGapPenalty, float extendGapPenalty) {
         //START INIT part
@@ -63,19 +62,15 @@ public class SmithWatermanGotoh {
         byte[] pointers = new byte[rows * cols];
 
        // Initializes the boundaries of the traceback matrix to STOP.
-        //TODO parallelizable no read dependency between both loops
-        //TODO parallelizable no read dependency inside loop
         for (int i = 0, k = 0; i < rows; i++, k += cols) {
             pointers[k] = Directions.STOP;
         }
-        //TODO parallelizable no read dependency inside loop
         for (int j = 1; j < cols; j++) {
             pointers[j] = Directions.STOP;
         }
 
         short[] sizesOfVerticalGaps = new short[rows * cols];
         short[] sizesOfHorizontalGaps = new short[rows * cols];
-        //TODO parallelizable only read dependencies no write
         for (int i = 0, k = 0; i < rows; i++, k += cols) {
             for (int j = 0; j < cols; j++) {
                 sizesOfVerticalGaps[k + j] = sizesOfHorizontalGaps[k + j] = 1;
@@ -106,7 +101,6 @@ public class SmithWatermanGotoh {
      * @param e      extend gap penalty
      * @return The cell where the traceback starts.
      */
-    //TODO 4% of time
     private Cell construct(Sequence s1, Sequence s2, float[][] matrix, float o,
                            float e, byte[] pointers, short[] sizesOfVerticalGaps,
                            short[] sizesOfHorizontalGaps) {

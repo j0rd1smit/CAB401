@@ -1,5 +1,6 @@
 import helpers.JsonHelper;
 import lombok.SneakyThrows;
+import qut.ISequential;
 import qut.Sequential;
 import qut.Sigma70Consensus;
 
@@ -46,9 +47,9 @@ public class TestResultsGenerator {
     @SneakyThrows
     private static void generateTest(String dir, List<String> filePaths) {
         for (String filePath : filePaths) {
-            Sequential sequential = new Sequential();
-            sequential.run(filePath, dir);
-            Map<String, Sigma70Consensus> result = sequential.getConsensus();
+            ISequential ISequential = new Sequential();
+            ISequential.run(filePath, dir);
+            Map<String, Sigma70Consensus> result = ISequential.getConsensus();
 
             String outputPath = formatOutputPath(filePath, dir);
             JsonHelper.getJsonHelper().write(result, outputPath);

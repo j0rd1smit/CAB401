@@ -4,6 +4,7 @@ import lombok.SneakyThrows;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import qut.ISequential;
 import qut.Sequential;
 import qut.Sigma70Consensus;
 
@@ -12,11 +13,12 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Verifies that functional is still working just like original sequential version.
+ * TODO Explanation
  *
- * @author Jordi Smit on 7-9-2018.
+ * @author Jordi Smit on 28-9-2018.
  */
-class FunctionalTest {
+public abstract class AbstractFunctionalTest {
+
 
     /**
      * Verifies that small parts of system works.
@@ -42,11 +44,13 @@ class FunctionalTest {
 
     @SneakyThrows
     private Map<String, Sigma70Consensus> calcConsensus(String filePath, String dir) {
-        Sequential sequential = new Sequential();
+        ISequential ISequential = getISequential();
 
-        sequential.run(filePath, dir);
-        return sequential.getConsensus();
+        ISequential.run(filePath, dir);
+        return ISequential.getConsensus();
     }
+
+    protected abstract ISequential getISequential();
 
     @SneakyThrows
     private Map<String, Sigma70Consensus> readExpectedFile(String filePath) {
