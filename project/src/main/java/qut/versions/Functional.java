@@ -13,6 +13,7 @@ import qut.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 /**
@@ -41,40 +42,54 @@ public class Functional implements ISequential<SynchronizedSigma70Consensus> {
 
     @SneakyThrows
     public static void main(String[] args) throws IOException {
-        Thread.sleep(5000);
         new Functional().run("referenceGenes.list", "Ecoli");
     }
 
+
     @Override
-    public void run(String referenceFile, String dir) throws IOException {
+    @SneakyThrows
+    public void run(String referenceFile, String dir) {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
         List<GenbankRecord> genbankRecords = ListGenbankFiles(dir).parallelStream().map(this::Parse).collect(Collectors.toList());
 
 
-        List<Tuple<GenbankRecord, Gene>> tuples = referenceGenes.parallelStream()
+        referenceGenes.parallelStream()
                 .flatMap(referenceGene -> genbankRecords.stream().map(genbankRecord -> new Tuple<>(genbankRecord, referenceGene)))
-                .collect(Collectors.toList());
-
-        tuples.parallelStream()
+                .flatMap(tuple -> {
+                    GenbankRecord record = tuple.left;
+                    Gene referenceGene = tuple.right;
+                    return record.genes.stream().map(gene -> new Tuple<>(gene, new Tuple<>(referenceGene, record)));
+                })
+                .filter(tuple -> {
+                    Gene gene = tuple.left;
+                    Gene referenceGene = tuple.right.left;
+                    return Homologous(gene.sequence, referenceGene.sequence);
+                })
+                .collect(Collectors.toList())
+                .parallelStream()
+                .map(tuple -> {
+                    Gene gene = tuple.left;
+                    Gene referenceGene = tuple.right.left;
+                    GenbankRecord record = tuple.right.right;
+                    return new Tuple<>(referenceGene.name, GetUpstreamRegion(record.nucleotides, gene));
+                })
+                .map(tuple -> {
+                    NucleotideSequence upStreamRegion = tuple.right;
+                    String name = tuple.left;
+                    return new Tuple<>(name, PredictPromoter(upStreamRegion));
+                })
+                .filter(tuple -> tuple.right != null)
+                .collect(Collectors.toList())
                 .forEach(tuple -> {
-                   GenbankRecord record = tuple.left;
-                   Gene referenceGene = tuple.right;
-                   for (Gene gene : record.genes) {
-                       if (Homologous(gene.sequence, referenceGene.sequence)) {
-                           NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
-                           Match prediction = PredictPromoter(upStreamRegion);
+                    consensus.get(tuple.left).addMatch(tuple.right);
+                    consensus.get("all").addMatch(tuple.right);
+                });
 
-                           if (prediction != null) {
-                               consensus.get(referenceGene.name).addMatch(prediction);
-                               consensus.get("all").addMatch(prediction);
-                           }
-                       }
-                   }
-               });
 
-        long end = System.currentTimeMillis();
-        System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
+
+
+        System.out.println(String.format("Run for: %s seconds", (System.currentTimeMillis() - start) / 1000L));
 
         for (Map.Entry<String, SynchronizedSigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
@@ -158,7 +173,8 @@ public class Functional implements ISequential<SynchronizedSigma70Consensus> {
     }
 
     @RequiredArgsConstructor
-    private static class Tuple<L, R> {
+    @Getter
+    static class Tuple<L, R> {
         private final L left;
         private final R right;
 

@@ -7,10 +7,14 @@ import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
 import lombok.Getter;
+import lombok.SneakyThrows;
 import qut.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 
 /**
  * TODO Explanation
@@ -36,16 +40,38 @@ public class GeneStreamingMidLoop implements ISequential<SynchronizedSigma70Cons
     }
 
 
-    public static void main(String[] args) throws IOException {
-        new GeneStreamingMidLoop().run("referenceGenes.list", "Ecoli");
+    public static void main(String[] args) throws IOException, ExecutionException, InterruptedException {
+        ForkJoinPool customThreadPool = new ForkJoinPool(8);
+        customThreadPool.submit(
+                () -> new GeneStreamingMidLoop().run("referenceGenes.list", "Ecoli")).get();
+
     }
 
     @Override
-    public void run(String referenceFile, String dir) throws IOException {
+    @SneakyThrows
+    public void run(String referenceFile, String dir)  {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
+        List<GenbankRecord> genbankRecords = ListGenbankFiles(dir).parallelStream().map(this::Parse).collect(Collectors.toList());
 
-        for (String filename : ListGenbankFiles(dir)) {
+        referenceGenes.parallelStream().forEach(referenceGene -> {
+            System.out.println(referenceGene.name);
+            for (GenbankRecord record : genbankRecords) {
+                for (Gene gene : record.genes) {
+                    if (Homologous(gene.sequence, referenceGene.sequence)) {
+                        NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
+                        Match prediction = PredictPromoter(upStreamRegion);
+
+                        if (prediction != null) {
+                            consensus.get(referenceGene.name).addMatch(prediction);
+                            consensus.get("all").addMatch(prediction);
+                        }
+                    }
+                }
+            }
+        });
+
+        /*for (String filename : ListGenbankFiles(dir)) {
             System.out.println(filename);
             GenbankRecord record = Parse(filename);
 
@@ -65,7 +91,7 @@ public class GeneStreamingMidLoop implements ISequential<SynchronizedSigma70Cons
                     }
                 }
             });
-        }
+        }*/
 
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
@@ -112,7 +138,8 @@ public class GeneStreamingMidLoop implements ISequential<SynchronizedSigma70Cons
         }
     }
 
-    private GenbankRecord Parse(String file) throws IOException {
+    @SneakyThrows
+    private GenbankRecord Parse(String file) {
         GenbankRecord record = new GenbankRecord();
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
         record.Parse(reader);

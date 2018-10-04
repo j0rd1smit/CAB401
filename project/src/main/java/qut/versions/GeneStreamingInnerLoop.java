@@ -12,7 +12,9 @@ import qut.*;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 /**
  * TODO Explanation
@@ -40,11 +42,14 @@ public class GeneStreamingInnerLoop implements ISequential<SynchronizedSigma70Co
 
     @SneakyThrows
     public static void main(String[] args) throws IOException {
-        new GeneStreamingInnerLoop().run("referenceGenes.list", "Ecoli");
+        ForkJoinPool customThreadPool = new ForkJoinPool(8);
+        customThreadPool.submit(
+                () -> new GeneStreamingInnerLoop().run("referenceGenes.list", "Ecoli")).get();
     }
 
     @Override
-    public void run(String referenceFile, String dir) throws IOException {
+    @SneakyThrows
+    public void run(String referenceFile, String dir)  {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
         List<GenbankRecord> genbankRecords = ListGenbankFiles(dir).parallelStream().map(this::Parse).collect(Collectors.toList());
