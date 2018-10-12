@@ -1,4 +1,4 @@
-package qut.versions;
+package qut.final_versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -17,16 +17,17 @@ import java.util.stream.Collectors;
 /**
  * TODO Explanation
  *
- * @author Jordi Smit on 28-9-2018.
+ * @author Jordi Smit on 11-10-2018.
  */
-public class GeneStreamingOnlyParalizablePart implements ISequential {
+@SuppressWarnings("ALL")
+public class BasicSteamingVersion implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
     private Map<String, Sigma70Consensus> consensus = new HashMap<>();
     private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
     private byte[] complement = new byte['z'];
 
-    public GeneStreamingOnlyParalizablePart() {
+    public BasicSteamingVersion() {
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -39,33 +40,40 @@ public class GeneStreamingOnlyParalizablePart implements ISequential {
 
 
     public static void main(String[] args) throws IOException {
-        new GeneStreamingOnlyParalizablePart().run("referenceGenes.list", "Ecoli");
+        new BasicSteamingVersion().run("referenceGenes.list", "Ecoli");
     }
 
     @Override
     public void run(String referenceFile, String dir) throws IOException {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
-        List<GenbankRecord> genbankRecords = ListGenbankFiles(dir).parallelStream().map(this::Parse).collect(Collectors.toList());
+        List<DataContainer> dataContainers = new LinkedList<>();
 
-        for (GenbankRecord record : genbankRecords) {
+        List<GenbankRecord> records = ListGenbankFiles(dir).parallelStream()
+                .map(this::Parse)
+                .collect(Collectors.toList());
+
+        for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
-
-                record.genes.parallelStream()
-                        .filter(gene -> Homologous(gene.sequence, referenceGene.sequence))
-                        .map(gene -> GetUpstreamRegion(record.nucleotides, gene))
-                        .collect(Collectors.toList())
-                        .forEach(upStreamRegion -> {
-                            Match prediction = PredictPromoter(upStreamRegion);
-
-                            if (prediction != null) {
-                                consensus.get(referenceGene.name).addMatch(prediction);
-                                consensus.get("all").addMatch(prediction);
-                            }
-                        });
+                for (Gene gene : record.genes) {
+                    dataContainers.add(new DataContainer(gene, referenceGene, record.nucleotides, referenceGene.name));
+                }
             }
         }
+
+        dataContainers.parallelStream()
+                .filter(dataContainer -> Homologous(dataContainer.getGene().sequence, dataContainer.getReferenceGene().sequence))
+                .collect(Collectors.toList())
+                .forEach(dataContainer -> {
+                    NucleotideSequence upStreamRegion = GetUpstreamRegion(dataContainer.getNucleotides(), dataContainer.getGene());
+                    Match prediction = PredictPromoter(upStreamRegion);
+
+                    if (prediction != null) {
+                        consensus.get(dataContainer.getName()).addMatch(prediction);
+                        consensus.get("all").addMatch(prediction);
+                    }
+                });
 
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
@@ -76,7 +84,8 @@ public class GeneStreamingOnlyParalizablePart implements ISequential {
     }
 
 
-    private List<Gene> ParseReferenceGenes(String referenceFile) throws IOException {
+    @SneakyThrows
+    private List<Gene> ParseReferenceGenes(String referenceFile)  {
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(referenceFile)));
         List<Gene> referenceGenes = new ArrayList<>();
         while (true) {
@@ -123,8 +132,13 @@ public class GeneStreamingOnlyParalizablePart implements ISequential {
 
     private boolean Homologous(PeptideSequence A, PeptideSequence B) {
         return SmithWatermanGotoh
-                .align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f)
-                .calculateScore() >= 60;
+                .align(
+                        new Sequence(A.toString()),
+                        new Sequence(B.toString()),
+                        BLOSUM_62,
+                        10f,
+                        0.5f
+                ).calculateScore() >= 60;
     }
 
     private NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene) {

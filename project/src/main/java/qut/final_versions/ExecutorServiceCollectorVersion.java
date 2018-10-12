@@ -1,4 +1,4 @@
-package qut.versions;
+package qut.final_versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -7,27 +7,33 @@ import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import qut.*;
-
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * TODO Explanation
  *
- * @author Jordi Smit on 28-9-2018.
+ * @author Jordi Smit on 11-10-2018.
  */
-public class ThreadChucksInnerLoop implements ISequential<SynchronizedSigma70Consensus> {
+@SuppressWarnings("ALL")
+public class ExecutorServiceCollectorVersion implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
-    private Map<String, SynchronizedSigma70Consensus> consensus = new HashMap<>();
+    private Map<String, Sigma70Consensus> consensus = new HashMap<>();
     private static ThreadLocal<Series> sigma70_pattern = ThreadLocal.withInitial(() -> Sigma70Definition.getSeriesAll_Unanchored(0.7));
     private byte[] complement = new byte['z'];
 
-    private final int numberOfThreads;
+    private final int nThreads;
 
-    public ThreadChucksInnerLoop(int numberOfThreads) {
+    public ExecutorServiceCollectorVersion(int nThreads) {
+        this.nThreads = nThreads;
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -36,65 +42,54 @@ public class ThreadChucksInnerLoop implements ISequential<SynchronizedSigma70Con
         complement['t'] = 'a';
         complement['A'] = 'T';
         complement['a'] = 't';
-        this.numberOfThreads = numberOfThreads;
     }
 
 
-    public static void main(String[] args) throws IOException {
-        new ThreadChucksInnerLoop(8).run("referenceGenes.list", "Ecoli");
+    public static void main(String[] args) throws IOException, InterruptedException {
+        Thread.sleep(5000);
+        new ExecutorServiceCollectorVersion(8).run("referenceGenes.list", "Ecoli");
     }
 
     @Override
     @SneakyThrows
-    public void run(String referenceFile, String dir) throws IOException {
+    public void run(String referenceFile, String dir) {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
+        List<GenbankRecord> records = new ArrayList<>();
+        List<DataContainer> dataContainers = new LinkedList<>();
 
         for (String filename : ListGenbankFiles(dir)) {
-            System.out.println(filename);
-            GenbankRecord record = Parse(filename);
+            records.add(Parse(filename));
+        }
 
+        for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
-
-                List<Thread> threads = new ArrayList<>();
-                int total = record.genes.size();
-                int blockSize = (total + (numberOfThreads -1)) / numberOfThreads;
-
-                for (int i = 0; i < numberOfThreads; i++) {
-                    int startIndex =  Math.min(total, i * blockSize);
-                    int endIndex = Math.min(total, startIndex + blockSize);
-
-                    Thread thread = new Thread(() -> {
-                        for (Gene gene : record.genes.subList(startIndex, endIndex)) {
-                            if (Homologous(gene.sequence, referenceGene.sequence)) {
-                                NucleotideSequence upStreamRegion = GetUpstreamRegion(record.nucleotides, gene);
-                                Match prediction = PredictPromoter(upStreamRegion);
-
-                                if (prediction != null) {
-                                    consensus.get(referenceGene.name).addMatch(prediction);
-                                    consensus.get("all").addMatch(prediction);
-                                }
-                            }
-                        }
-                    });
-
-                    threads.add(thread);
-                    thread.start();
+                for (Gene gene : record.genes) {
+                    dataContainers.add(new DataContainer(gene, referenceGene, record.nucleotides, referenceGene.name));
                 }
+            }
+        }
 
-                for (Thread thread : threads) {
-                    thread.join();
-                }
+        ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
+        List<Future<PredictionContainer>> results = executorService.invokeAll(dataContainers);
+
+        for (Future<PredictionContainer> future : results) {
+            PredictionContainer predictionContainer = future.get();
+            if (predictionContainer != null) {
+                consensus.get(predictionContainer.getName()).addMatch(predictionContainer.getPrediction());
+                consensus.get("all").addMatch(predictionContainer.getPrediction());
             }
         }
 
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
 
-        for (Map.Entry<String, SynchronizedSigma70Consensus> entry : consensus.entrySet()) {
+        for (Map.Entry<String, Sigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
+
+        executorService.shutdown();
     }
 
 
@@ -108,9 +103,9 @@ public class ThreadChucksInnerLoop implements ISequential<SynchronizedSigma70Con
             }
             String sequence = reader.readLine();
             referenceGenes.add(new Gene(name, 0, 0, sequence));
-            consensus.put(name, new SynchronizedSigma70Consensus());
+            consensus.put(name, new Sigma70Consensus());
         }
-        consensus.put("all", new SynchronizedSigma70Consensus());
+        consensus.put("all", new Sigma70Consensus());
         reader.close();
         return referenceGenes;
     }
@@ -134,7 +129,8 @@ public class ThreadChucksInnerLoop implements ISequential<SynchronizedSigma70Con
         }
     }
 
-    private GenbankRecord Parse(String file) throws IOException {
+    @SneakyThrows
+    private GenbankRecord Parse(String file) {
         GenbankRecord record = new GenbankRecord();
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
         record.Parse(reader);
@@ -144,8 +140,13 @@ public class ThreadChucksInnerLoop implements ISequential<SynchronizedSigma70Con
 
     private boolean Homologous(PeptideSequence A, PeptideSequence B) {
         return SmithWatermanGotoh
-                .align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f)
-                .calculateScore() >= 60;
+                .align(
+                        new Sequence(A.toString()),
+                        new Sequence(B.toString()),
+                        BLOSUM_62,
+                        10f,
+                        0.5f
+                ).calculateScore() >= 60;
     }
 
     private NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene) {
@@ -171,5 +172,38 @@ public class ThreadChucksInnerLoop implements ISequential<SynchronizedSigma70Con
     private Match PredictPromoter(NucleotideSequence upStreamRegion) {
         return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
     }
+
+
+    private static final Object LOCK = new Object();
+
+    @Getter
+    @RequiredArgsConstructor
+    private class DataContainer implements Callable<PredictionContainer> {
+        private final Gene gene;
+        private final Gene referenceGene;
+        private final NucleotideSequence nucleotides;
+        private final String name;
+
+        @Override
+        public PredictionContainer call() throws Exception {
+            if (Homologous(gene.sequence, referenceGene.sequence)) {
+                NucleotideSequence upStreamRegion = GetUpstreamRegion(nucleotides, gene);
+                Match prediction = PredictPromoter(upStreamRegion);
+
+                if (prediction != null) {
+                    return new PredictionContainer(prediction, name);
+                }
+            }
+            return null;
+        }
+    }
+
+    @Getter
+    @RequiredArgsConstructor
+    private static class PredictionContainer {
+        private final Match prediction;
+        private final String name;
+    }
+
 
 }

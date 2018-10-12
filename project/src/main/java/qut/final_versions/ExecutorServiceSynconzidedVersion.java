@@ -1,4 +1,4 @@
-package qut.versions;
+package qut.final_versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -10,25 +10,29 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 import qut.*;
-
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * TODO Explanation
  *
- * @author Jordi Smit on 28-9-2018.
+ * @author Jordi Smit on 11-10-2018.
  */
-public class Functional implements ISequential<SynchronizedSigma70Consensus> {
+@SuppressWarnings("ALL")
+public class ExecutorServiceSynconzidedVersion implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
-    private Map<String, SynchronizedSigma70Consensus> consensus = new HashMap<>();
-    private static ThreadLocal<Series> sigma70_pattern =ThreadLocal.withInitial(() ->  Sigma70Definition.getSeriesAll_Unanchored(0.7));
+    private Map<String, Sigma70Consensus> consensus = new HashMap<>();
+    private static ThreadLocal<Series> sigma70_pattern = ThreadLocal.withInitial(() -> Sigma70Definition.getSeriesAll_Unanchored(0.7));
     private byte[] complement = new byte['z'];
 
-    public Functional() {
+    private final int nThreads;
+
+    public ExecutorServiceSynconzidedVersion(int nThreads) {
+        this.nThreads = nThreads;
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -40,60 +44,41 @@ public class Functional implements ISequential<SynchronizedSigma70Consensus> {
     }
 
 
-    @SneakyThrows
     public static void main(String[] args) throws IOException {
-        new Functional().run("referenceGenes.list", "Ecoli");
+        new ExecutorServiceSynconzidedVersion(8).run("referenceGenes.list", "Ecoli");
     }
-
 
     @Override
     @SneakyThrows
     public void run(String referenceFile, String dir) {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
-        List<GenbankRecord> genbankRecords = ListGenbankFiles(dir).parallelStream().map(this::Parse).collect(Collectors.toList());
+        List<GenbankRecord> records = new ArrayList<>();
+        List<DataContainer> dataContainers = new LinkedList<>();
 
+        for (String filename : ListGenbankFiles(dir)) {
+            records.add(Parse(filename));
+        }
 
-        referenceGenes.parallelStream()
-                .flatMap(referenceGene -> genbankRecords.stream().map(genbankRecord -> new Tuple<>(genbankRecord, referenceGene)))
-                .flatMap(tuple -> {
-                    GenbankRecord record = tuple.left;
-                    Gene referenceGene = tuple.right;
-                    return record.genes.stream().map(gene -> new Tuple<>(gene, new Tuple<>(referenceGene, record)));
-                })
-                .filter(tuple -> {
-                    Gene gene = tuple.left;
-                    Gene referenceGene = tuple.right.left;
-                    return Homologous(gene.sequence, referenceGene.sequence);
-                })
-                .collect(Collectors.toList())
-                .parallelStream()
-                .map(tuple -> {
-                    Gene gene = tuple.left;
-                    Gene referenceGene = tuple.right.left;
-                    GenbankRecord record = tuple.right.right;
-                    return new Tuple<>(referenceGene.name, GetUpstreamRegion(record.nucleotides, gene));
-                })
-                .map(tuple -> {
-                    NucleotideSequence upStreamRegion = tuple.right;
-                    String name = tuple.left;
-                    return new Tuple<>(name, PredictPromoter(upStreamRegion));
-                })
-                .filter(tuple -> tuple.right != null)
-                .collect(Collectors.toList())
-                .forEach(tuple -> {
-                    consensus.get(tuple.left).addMatch(tuple.right);
-                    consensus.get("all").addMatch(tuple.right);
-                });
+        for (GenbankRecord record : records) {
+            for (Gene referenceGene : referenceGenes) {
+                System.out.println(referenceGene.name);
+                for (Gene gene : record.genes) {
+                    dataContainers.add(new DataContainer(gene, referenceGene, record.nucleotides, referenceGene.name));
+                }
+            }
+        }
+        ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
+        executorService.invokeAll(dataContainers);
+        executorService.shutdown();
 
+        long end = System.currentTimeMillis();
+        System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
 
-
-
-        System.out.println(String.format("Run for: %s seconds", (System.currentTimeMillis() - start) / 1000L));
-
-        for (Map.Entry<String, SynchronizedSigma70Consensus> entry : consensus.entrySet()) {
+        for (Map.Entry<String, Sigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
+
     }
 
 
@@ -107,9 +92,9 @@ public class Functional implements ISequential<SynchronizedSigma70Consensus> {
             }
             String sequence = reader.readLine();
             referenceGenes.add(new Gene(name, 0, 0, sequence));
-            consensus.put(name, new SynchronizedSigma70Consensus());
+            consensus.put(name, new Sigma70Consensus());
         }
-        consensus.put("all", new SynchronizedSigma70Consensus());
+        consensus.put("all", new Sigma70Consensus());
         reader.close();
         return referenceGenes;
     }
@@ -133,8 +118,7 @@ public class Functional implements ISequential<SynchronizedSigma70Consensus> {
         }
     }
 
-    @SneakyThrows
-    private GenbankRecord Parse(String file) {
+    private GenbankRecord Parse(String file) throws IOException {
         GenbankRecord record = new GenbankRecord();
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
         record.Parse(reader);
@@ -144,8 +128,13 @@ public class Functional implements ISequential<SynchronizedSigma70Consensus> {
 
     private boolean Homologous(PeptideSequence A, PeptideSequence B) {
         return SmithWatermanGotoh
-                .align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f)
-                .calculateScore() >= 60;
+                .align(
+                        new Sequence(A.toString()),
+                        new Sequence(B.toString()),
+                        BLOSUM_62,
+                        10f,
+                        0.5f
+                ).calculateScore() >= 60;
     }
 
     private NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene) {
@@ -172,11 +161,33 @@ public class Functional implements ISequential<SynchronizedSigma70Consensus> {
         return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
     }
 
-    @RequiredArgsConstructor
-    @Getter
-    static class Tuple<L, R> {
-        private final L left;
-        private final R right;
 
+    private static final Object LOCK = new Object();
+
+    @Getter
+    @RequiredArgsConstructor
+    private class DataContainer implements Callable<Void> {
+        private final Gene gene;
+        private final Gene referenceGene;
+        private final NucleotideSequence nucleotides;
+        private final String name;
+
+        @Override
+        public Void call() throws Exception {
+            if (Homologous(gene.sequence, referenceGene.sequence)) {
+                NucleotideSequence upStreamRegion = GetUpstreamRegion(nucleotides, gene);
+                Match prediction = PredictPromoter(upStreamRegion);
+
+                if (prediction != null) {
+                    synchronized (LOCK) {
+                        consensus.get(name).addMatch(prediction);
+                        consensus.get("all").addMatch(prediction);
+                    }
+                }
+            }
+            return null;
+        }
     }
+
+
 }

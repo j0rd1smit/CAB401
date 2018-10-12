@@ -11,6 +11,7 @@ import lombok.Getter;
 import java.io.*;
 import java.util.*;
 
+@SuppressWarnings("ALL")
 public class Sequential implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
@@ -52,8 +53,10 @@ public class Sequential implements ISequential {
                         Match prediction = PredictPromoter(upStreamRegion);
 
                         if (prediction != null) {
+
                             consensus.get(referenceGene.name).addMatch(prediction);
                             consensus.get("all").addMatch(prediction);
+
                         }
                     }
                 }
@@ -115,8 +118,13 @@ public class Sequential implements ISequential {
 
     private boolean Homologous(PeptideSequence A, PeptideSequence B) {
         return SmithWatermanGotoh
-                .align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f)
-                .calculateScore() >= 60;
+                .align(
+                        new Sequence(A.toString()),
+                        new Sequence(B.toString()),
+                        BLOSUM_62,
+                        10f,
+                        0.5f
+                ).calculateScore() >= 60;
     }
 
     private NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene) {
@@ -142,5 +150,6 @@ public class Sequential implements ISequential {
     private Match PredictPromoter(NucleotideSequence upStreamRegion) {
         return BioPatterns.getBestMatch(sigma70_pattern, upStreamRegion.toString());
     }
+
 
 }

@@ -1,4 +1,4 @@
-package qut.versions;
+package qut.final_versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -7,28 +7,25 @@ import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import qut.*;
 
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.ForkJoinPool;
-import java.util.stream.Collectors;
-import java.util.stream.LongStream;
 
 /**
  * TODO Explanation
  *
- * @author Jordi Smit on 28-9-2018.
+ * @author Jordi Smit on 11-10-2018.
  */
-public class GeneStreamingInnerLoop implements ISequential<SynchronizedSigma70Consensus> {
+@SuppressWarnings("ALL")
+public class SequentialRewrite implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
-    private Map<String, SynchronizedSigma70Consensus> consensus = new HashMap<>();
-    private static ThreadLocal<Series> sigma70_pattern =ThreadLocal.withInitial(() ->  Sigma70Definition.getSeriesAll_Unanchored(0.7));
+    private Map<String, Sigma70Consensus> consensus = new HashMap<>();
+    private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
     private byte[] complement = new byte['z'];
 
-    public GeneStreamingInnerLoop() {
+    public SequentialRewrite() {
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -40,41 +37,48 @@ public class GeneStreamingInnerLoop implements ISequential<SynchronizedSigma70Co
     }
 
 
-    @SneakyThrows
     public static void main(String[] args) throws IOException {
-        ForkJoinPool customThreadPool = new ForkJoinPool(8);
-        customThreadPool.submit(
-                () -> new GeneStreamingInnerLoop().run("referenceGenes.list", "Ecoli")).get();
+        new SequentialRewrite().run("referenceGenes.list", "Ecoli");
     }
 
     @Override
-    @SneakyThrows
-    public void run(String referenceFile, String dir)  {
+    public void run(String referenceFile, String dir) throws IOException {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
-        List<GenbankRecord> genbankRecords = ListGenbankFiles(dir).parallelStream().map(this::Parse).collect(Collectors.toList());
+        List<GenbankRecord> records = new ArrayList<>();
+        List<DataContainer> dataContainers = new LinkedList<>();
 
+        for (String filename : ListGenbankFiles(dir)) {
+            records.add(Parse(filename));
+        }
 
-        for (GenbankRecord record : genbankRecords) {
+        for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
+                for (Gene gene : record.genes) {
+                    dataContainers.add(new DataContainer(gene, referenceGene, record.nucleotides, referenceGene.name));
+                }
+            }
+        }
 
-                record.genes.parallelStream()
-                        .filter(gene -> Homologous(gene.sequence, referenceGene.sequence))
-                        .map(gene ->  GetUpstreamRegion(record.nucleotides, gene))
-                        .map(this::PredictPromoter)
-                        .filter(Objects::nonNull)
-                        .forEach(prediction -> {
-                            consensus.get(referenceGene.name).addMatch(prediction);
-                            consensus.get("all").addMatch(prediction);
-                        });
+        for (DataContainer dataContainer : dataContainers) {
+            if (Homologous(dataContainer.getGene().sequence, dataContainer.getReferenceGene().sequence)) {
+                NucleotideSequence upStreamRegion = GetUpstreamRegion(dataContainer.getNucleotides(), dataContainer.getGene());
+                Match prediction = PredictPromoter(upStreamRegion);
+
+                if (prediction != null) {
+
+                    consensus.get(dataContainer.getName()).addMatch(prediction);
+                    consensus.get("all").addMatch(prediction);
+
+                }
             }
         }
 
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
 
-        for (Map.Entry<String, SynchronizedSigma70Consensus> entry : consensus.entrySet()) {
+        for (Map.Entry<String, Sigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
     }
@@ -90,9 +94,9 @@ public class GeneStreamingInnerLoop implements ISequential<SynchronizedSigma70Co
             }
             String sequence = reader.readLine();
             referenceGenes.add(new Gene(name, 0, 0, sequence));
-            consensus.put(name, new SynchronizedSigma70Consensus());
+            consensus.put(name, new Sigma70Consensus());
         }
-        consensus.put("all", new SynchronizedSigma70Consensus());
+        consensus.put("all", new Sigma70Consensus());
         reader.close();
         return referenceGenes;
     }
@@ -116,8 +120,7 @@ public class GeneStreamingInnerLoop implements ISequential<SynchronizedSigma70Co
         }
     }
 
-    @SneakyThrows
-    private GenbankRecord Parse(String file) {
+    private GenbankRecord Parse(String file) throws IOException {
         GenbankRecord record = new GenbankRecord();
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
         record.Parse(reader);
@@ -127,8 +130,13 @@ public class GeneStreamingInnerLoop implements ISequential<SynchronizedSigma70Co
 
     private boolean Homologous(PeptideSequence A, PeptideSequence B) {
         return SmithWatermanGotoh
-                .align(new Sequence(A.toString()), new Sequence(B.toString()), BLOSUM_62, 10f, 0.5f)
-                .calculateScore() >= 60;
+                .align(
+                        new Sequence(A.toString()),
+                        new Sequence(B.toString()),
+                        BLOSUM_62,
+                        10f,
+                        0.5f
+                ).calculateScore() >= 60;
     }
 
     private NucleotideSequence GetUpstreamRegion(NucleotideSequence dna, Gene gene) {
@@ -152,6 +160,8 @@ public class GeneStreamingInnerLoop implements ISequential<SynchronizedSigma70Co
     }
 
     private Match PredictPromoter(NucleotideSequence upStreamRegion) {
-        return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
+        return BioPatterns.getBestMatch(sigma70_pattern, upStreamRegion.toString());
     }
+
+
 }

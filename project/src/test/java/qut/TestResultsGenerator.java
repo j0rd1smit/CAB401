@@ -1,3 +1,5 @@
+package qut;
+
 import helpers.JsonHelper;
 import lombok.SneakyThrows;
 import qut.ISequential;
@@ -62,7 +64,7 @@ public class TestResultsGenerator {
      * @param dir The Ecoli dir being used.
      * @return The file location of the stored result.
      */
-    static String formatOutputPath(String filePathToList, String dir) {
+    public static String formatOutputPath(String filePathToList, String dir) {
         return String.format("expected_output/%s/%s", dir, filePathToList.replace(".list", ".json"));
     }
 

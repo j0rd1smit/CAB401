@@ -1,3 +1,5 @@
+package qut;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import helpers.JsonHelper;
 import lombok.SneakyThrows;
@@ -32,7 +34,7 @@ public abstract class AbstractFunctionalTest {
             "testLists/nhaA.list",
             "testLists/yaaY.list"
     })
-    void _fastTest(String filePath) {
+    public void _fastTest(String filePath) {
         String dir = "Ecoli/Escherichia_coli_BW2952_uid59391";
         Map<String, Sigma70Consensus> expected = readExpectedFile(TestResultsGenerator.formatOutputPath(filePath, dir));
 
@@ -61,7 +63,7 @@ public abstract class AbstractFunctionalTest {
      * Verifies that entire system works.
      */
     @Test
-    void _slowSystemTest() {
+    public void _slowSystemTest() {
         String dir = "Ecoli";
         String filePath = "referenceGenes.list";
         Map<String, Sigma70Consensus> expected = readExpectedFile(TestResultsGenerator.formatOutputPath(filePath, dir));
