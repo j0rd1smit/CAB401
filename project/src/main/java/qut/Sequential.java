@@ -11,6 +11,9 @@ import lombok.Getter;
 import java.io.*;
 import java.util.*;
 
+/**
+ * The original version.
+ */
 @SuppressWarnings("ALL")
 public class Sequential implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();

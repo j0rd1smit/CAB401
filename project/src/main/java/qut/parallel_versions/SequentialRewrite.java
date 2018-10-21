@@ -13,7 +13,7 @@ import java.io.*;
 import java.util.*;
 
 /**
- * TODO Explanation
+ * The Sequential rewriten to expose more parrallelism.
  *
  * @author Jordi Smit on 11-10-2018.
  */
@@ -36,7 +36,11 @@ public class SequentialRewrite implements ISequential {
         complement['a'] = 't';
     }
 
-
+    /**
+     * Run the SequentialRewrite version.
+     * @param args
+     * @throws IOException
+     */
     public static void main(String[] args) throws IOException {
         new SequentialRewrite().run("referenceGenes.list", "Ecoli");
     }
@@ -48,10 +52,12 @@ public class SequentialRewrite implements ISequential {
         List<GenbankRecord> records = new ArrayList<>();
         List<DataContainer> dataContainers = new LinkedList<>();
 
+        //read all the gene bank files
         for (String filename : ListGenbankFiles(dir)) {
             records.add(Parse(filename));
         }
 
+        //collect all the work in the dataContainers list.
         for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
@@ -61,6 +67,7 @@ public class SequentialRewrite implements ISequential {
             }
         }
 
+        //preform the work.
         for (DataContainer dataContainer : dataContainers) {
             if (Homologous(dataContainer.getGene().sequence, dataContainer.getReferenceGene().sequence)) {
                 NucleotideSequence upStreamRegion = GetUpstreamRegion(dataContainer.getNucleotides(), dataContainer.getGene());

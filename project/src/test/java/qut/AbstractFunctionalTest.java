@@ -15,7 +15,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * TODO Explanation
+ * Preforms a functional system test.
  *
  * @author Jordi Smit on 28-9-2018.
  */

@@ -23,7 +23,6 @@ package jaligner;
  *
  * @author Ahmed Moustafa (ahmed@users.sf.net)
  */
-//TODO
 public class Cell {
     /**
      * Row of the cell

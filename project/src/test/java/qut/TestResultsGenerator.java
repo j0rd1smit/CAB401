@@ -23,6 +23,7 @@ public class TestResultsGenerator {
      * @param args None
      */
     public static void main(String[] args)  {
+        //only enable we needed.
         //generateFastTest();
         //generateSystemTests();
     }

@@ -3,7 +3,7 @@ package qut;
 import java.io.IOException;
 
 /**
- * TODO Explanation
+ * A interface create for testing purposes.
  *
  * @author Jordi Smit on 27-9-2018.
  */

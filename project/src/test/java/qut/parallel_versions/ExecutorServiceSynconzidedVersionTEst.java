@@ -5,7 +5,7 @@ import qut.AbstractFunctionalTest;
 import qut.ISequential;
 
 /**
- * TODO Explanation
+ * Run the AbstractFunctionalTest for the ExecutorServiceSynconzidedVersion.
  *
  * @author Jordi Smit on 11-10-2018.
  */
