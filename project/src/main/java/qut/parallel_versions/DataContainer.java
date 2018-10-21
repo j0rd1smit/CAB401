@@ -6,7 +6,7 @@ import qut.Gene;
 import qut.NucleotideSequence;
 
 /**
- * TODO Explanation
+ * A data container for the streaming work.
  *
  * @author Jordi Smit on 11-10-2018.
  */

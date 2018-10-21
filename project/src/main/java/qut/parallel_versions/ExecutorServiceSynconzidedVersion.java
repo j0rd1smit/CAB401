@@ -17,7 +17,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * TODO Explanation
+ * The ExecutorServiceSynconzided version.
  *
  * @author Jordi Smit on 11-10-2018.
  */
@@ -43,7 +43,11 @@ public class ExecutorServiceSynconzidedVersion implements ISequential {
         complement['a'] = 't';
     }
 
-
+    /**
+     * Run the ExecutorServiceSynconzided version.
+     * @param args
+     * @throws IOException
+     */
     public static void main(String[] args) throws IOException {
         new ExecutorServiceSynconzidedVersion(8).run("referenceGenes.list", "Ecoli");
     }
@@ -56,10 +60,12 @@ public class ExecutorServiceSynconzidedVersion implements ISequential {
         List<GenbankRecord> records = new ArrayList<>();
         List<DataContainer> dataContainers = new LinkedList<>();
 
+        //read all the genbank files.
         for (String filename : ListGenbankFiles(dir)) {
             records.add(Parse(filename));
         }
 
+        //collect all the work in the dataContainers list.
         for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
@@ -68,9 +74,10 @@ public class ExecutorServiceSynconzidedVersion implements ISequential {
                 }
             }
         }
+        //create a thread pool.
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
+        //preform the work in parallel.
         executorService.invokeAll(dataContainers);
-        executorService.shutdown();
 
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
@@ -79,6 +86,8 @@ public class ExecutorServiceSynconzidedVersion implements ISequential {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
 
+        //shutdown the thread pool.
+        executorService.shutdown();
     }
 
 
@@ -161,9 +170,14 @@ public class ExecutorServiceSynconzidedVersion implements ISequential {
         return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
     }
 
-
+    /**
+     * The syncornization lock.
+     */
     private static final Object LOCK = new Object();
 
+    /**
+     * The data container.
+     */
     @Getter
     @RequiredArgsConstructor
     private class DataContainer implements Callable<Void> {
@@ -172,6 +186,11 @@ public class ExecutorServiceSynconzidedVersion implements ISequential {
         private final NucleotideSequence nucleotides;
         private final String name;
 
+        /**
+         * The work to preformed in parallel.
+         * @return The prediction result.
+         * @throws Exception
+         */
         @Override
         public Void call() throws Exception {
             if (Homologous(gene.sequence, referenceGene.sequence)) {
@@ -188,6 +207,4 @@ public class ExecutorServiceSynconzidedVersion implements ISequential {
             return null;
         }
     }
-
-
 }

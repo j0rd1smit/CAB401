@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
 import static java.util.stream.Collectors.groupingBy;
 
 /**
- * TODO Explanation
+ * The basic stream version.
  *
  * @author Jordi Smit on 11-10-2018.
  */
@@ -40,7 +40,11 @@ public class BasicSteamingVersion implements ISequential {
         complement['a'] = 't';
     }
 
-
+    /**
+     * Run the basic streaming version.
+     * @param args
+     * @throws IOException
+     */
     public static void main(String[] args) throws IOException {
         new BasicSteamingVersion().run("referenceGenes.list", "Ecoli");
     }
@@ -51,10 +55,12 @@ public class BasicSteamingVersion implements ISequential {
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
         List<DataContainer> dataContainers = new LinkedList<>();
 
+        //read all the gene bank files in parallel.
         List<GenbankRecord> records = ListGenbankFiles(dir).parallelStream()
                 .map(this::Parse)
                 .collect(Collectors.toList());
 
+        //collect all the work in the dataContainers list.
         for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
@@ -64,9 +70,12 @@ public class BasicSteamingVersion implements ISequential {
             }
         }
 
+        //preform all the work in parallel using streams.
        dataContainers.parallelStream()
                 .filter(dataContainer -> Homologous(dataContainer.getGene().sequence, dataContainer.getReferenceGene().sequence))
+                //collect the result form the parallel work and put it into a sequntial list.
                 .collect(Collectors.toList())
+               //preform the remaining park in sequance.
                 .forEach(dataContainer -> {
                     NucleotideSequence upStreamRegion = GetUpstreamRegion(dataContainer.getNucleotides(), dataContainer.getGene());
                     Match prediction = PredictPromoter(upStreamRegion);

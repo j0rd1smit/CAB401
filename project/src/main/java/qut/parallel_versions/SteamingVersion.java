@@ -16,7 +16,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * TODO Explanation
+ * The final stream version.
  *
  * @author Jordi Smit on 11-10-2018.
  */
@@ -40,8 +40,12 @@ public class SteamingVersion implements ISequential {
     }
 
 
+    /**
+     * Run the final streaming version.
+     * @param args
+     * @throws IOException
+     */
     public static void main(String[] args) throws IOException, InterruptedException {
-        Thread.sleep(5000);
         new SteamingVersion().run("referenceGenes.list", "Ecoli");
     }
 
@@ -51,10 +55,12 @@ public class SteamingVersion implements ISequential {
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
         List<DataContainer> dataContainers = new LinkedList<>();
 
+        //read all the gene bank files in parallel.
         List<GenbankRecord> records = ListGenbankFiles(dir).parallelStream()
                 .map(this::Parse)
                 .collect(Collectors.toList());
 
+        //collect all the work in the dataContainers list.
         for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
@@ -64,21 +70,23 @@ public class SteamingVersion implements ISequential {
             }
         }
 
+        //preform all the work in parallel using streams.
         dataContainers.parallelStream()
                 .filter(dataContainer -> Homologous(dataContainer.getGene().sequence, dataContainer.getReferenceGene().sequence))
+                //find the Prediction in parallel
                 .map(dataContainer -> {
                     NucleotideSequence upStreamRegion = GetUpstreamRegion(dataContainer.getNucleotides(), dataContainer.getGene());
                     return new PredictionContainer(PredictPromoter(upStreamRegion), dataContainer.getName());
                 })
+                //remove the null object in parallel.
                 .filter(predictionContainer -> predictionContainer.prediction != null)
+                //collect the result form the parallel work and put it into a sequntial list.
                 .collect(Collectors.toList())
+                //preform the remaining park in sequance.
                 .forEach(predictionContainer -> {
                     consensus.get(predictionContainer.name).addMatch(predictionContainer.prediction);
                     consensus.get("all").addMatch(predictionContainer.prediction);
                 });
-
-
-
 
         long end = System.currentTimeMillis();
         System.out.println(String.format("Run for: %s seconds", (end - start) / 1000L));
@@ -170,6 +178,9 @@ public class SteamingVersion implements ISequential {
         return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
     }
 
+    /**
+     * A data object use in order to preform the parallel mapping.
+     */
     @RequiredArgsConstructor
     private static class PredictionContainer {
 

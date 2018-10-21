@@ -18,7 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * TODO Explanation
+ * The ExecutorServiceCollector version.
  *
  * @author Jordi Smit on 11-10-2018.
  */
@@ -44,9 +44,12 @@ public class ExecutorServiceCollectorVersion implements ISequential {
         complement['a'] = 't';
     }
 
-
+    /**
+     * Run the ExecutorServiceCollector version.
+     * @param args
+     * @throws IOException
+     */
     public static void main(String[] args) throws IOException, InterruptedException {
-        Thread.sleep(5000);
         new ExecutorServiceCollectorVersion(8).run("referenceGenes.list", "Ecoli");
     }
 
@@ -58,10 +61,12 @@ public class ExecutorServiceCollectorVersion implements ISequential {
         List<GenbankRecord> records = new ArrayList<>();
         List<DataContainer> dataContainers = new LinkedList<>();
 
+        //read all the genbank files.
         for (String filename : ListGenbankFiles(dir)) {
             records.add(Parse(filename));
         }
 
+        //collect all the work in the dataContainers list.
         for (GenbankRecord record : records) {
             for (Gene referenceGene : referenceGenes) {
                 System.out.println(referenceGene.name);
@@ -71,9 +76,12 @@ public class ExecutorServiceCollectorVersion implements ISequential {
             }
         }
 
+        //create a thread pool.
         ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
+        //start the ExecutorService and wait for the results.
         List<Future<PredictionContainer>> results = executorService.invokeAll(dataContainers);
 
+        //add the results to the consensus.
         for (Future<PredictionContainer> future : results) {
             PredictionContainer predictionContainer = future.get();
             if (predictionContainer != null) {
@@ -89,6 +97,7 @@ public class ExecutorServiceCollectorVersion implements ISequential {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
 
+        //shutdown the thread pool.
         executorService.shutdown();
     }
 
@@ -174,8 +183,14 @@ public class ExecutorServiceCollectorVersion implements ISequential {
     }
 
 
+    /**
+     * The syncornization lock.
+     */
     private static final Object LOCK = new Object();
 
+    /**
+     * The data container.
+     */
     @Getter
     @RequiredArgsConstructor
     private class DataContainer implements Callable<PredictionContainer> {
@@ -184,6 +199,11 @@ public class ExecutorServiceCollectorVersion implements ISequential {
         private final NucleotideSequence nucleotides;
         private final String name;
 
+        /**
+         * The work to preformed in parallel.
+         * @return The prediction result.
+         * @throws Exception
+         */
         @Override
         public PredictionContainer call() throws Exception {
             if (Homologous(gene.sequence, referenceGene.sequence)) {
@@ -198,6 +218,9 @@ public class ExecutorServiceCollectorVersion implements ISequential {
         }
     }
 
+    /**
+     * A data object use in order to preform the parallel mapping.
+     */
     @Getter
     @RequiredArgsConstructor
     private static class PredictionContainer {
