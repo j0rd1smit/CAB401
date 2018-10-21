@@ -31,7 +31,8 @@ public class Sequential implements ISequential {
     }
 
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
+        Thread.sleep(5000);
         new Sequential().run("referenceGenes.list", "Ecoli");
     }
 

@@ -1,4 +1,4 @@
-package qut.final_versions;
+package qut.parallel_versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;

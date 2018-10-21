@@ -1,4 +1,4 @@
-package qut.final_versions;
+package qut.parallel_versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -7,15 +7,10 @@ import jaligner.Sequence;
 import jaligner.SmithWatermanGotoh;
 import jaligner.matrix.Matrix;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import qut.*;
+
 import java.io.*;
 import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /**
  * TODO Explanation
@@ -23,17 +18,14 @@ import java.util.concurrent.Future;
  * @author Jordi Smit on 11-10-2018.
  */
 @SuppressWarnings("ALL")
-public class ExecutorServiceCollectorVersion implements ISequential {
+public class SequentialRewrite implements ISequential {
     private static final Matrix BLOSUM_62 = BLOSUM62.Load();
     @Getter
     private Map<String, Sigma70Consensus> consensus = new HashMap<>();
-    private static ThreadLocal<Series> sigma70_pattern = ThreadLocal.withInitial(() -> Sigma70Definition.getSeriesAll_Unanchored(0.7));
+    private static Series sigma70_pattern = Sigma70Definition.getSeriesAll_Unanchored(0.7);
     private byte[] complement = new byte['z'];
 
-    private final int nThreads;
-
-    public ExecutorServiceCollectorVersion(int nThreads) {
-        this.nThreads = nThreads;
+    public SequentialRewrite() {
         complement['C'] = 'G';
         complement['c'] = 'g';
         complement['G'] = 'C';
@@ -45,14 +37,12 @@ public class ExecutorServiceCollectorVersion implements ISequential {
     }
 
 
-    public static void main(String[] args) throws IOException, InterruptedException {
-        Thread.sleep(5000);
-        new ExecutorServiceCollectorVersion(8).run("referenceGenes.list", "Ecoli");
+    public static void main(String[] args) throws IOException {
+        new SequentialRewrite().run("referenceGenes.list", "Ecoli");
     }
 
     @Override
-    @SneakyThrows
-    public void run(String referenceFile, String dir) {
+    public void run(String referenceFile, String dir) throws IOException {
         long start = System.currentTimeMillis();
         List<Gene> referenceGenes = ParseReferenceGenes(referenceFile);
         List<GenbankRecord> records = new ArrayList<>();
@@ -71,14 +61,17 @@ public class ExecutorServiceCollectorVersion implements ISequential {
             }
         }
 
-        ExecutorService executorService = Executors.newFixedThreadPool(nThreads);
-        List<Future<PredictionContainer>> results = executorService.invokeAll(dataContainers);
+        for (DataContainer dataContainer : dataContainers) {
+            if (Homologous(dataContainer.getGene().sequence, dataContainer.getReferenceGene().sequence)) {
+                NucleotideSequence upStreamRegion = GetUpstreamRegion(dataContainer.getNucleotides(), dataContainer.getGene());
+                Match prediction = PredictPromoter(upStreamRegion);
 
-        for (Future<PredictionContainer> future : results) {
-            PredictionContainer predictionContainer = future.get();
-            if (predictionContainer != null) {
-                consensus.get(predictionContainer.getName()).addMatch(predictionContainer.getPrediction());
-                consensus.get("all").addMatch(predictionContainer.getPrediction());
+                if (prediction != null) {
+
+                    consensus.get(dataContainer.getName()).addMatch(prediction);
+                    consensus.get("all").addMatch(prediction);
+
+                }
             }
         }
 
@@ -88,8 +81,6 @@ public class ExecutorServiceCollectorVersion implements ISequential {
         for (Map.Entry<String, Sigma70Consensus> entry : consensus.entrySet()) {
             System.out.println(entry.getKey() + " " + entry.getValue());
         }
-
-        executorService.shutdown();
     }
 
 
@@ -129,8 +120,7 @@ public class ExecutorServiceCollectorVersion implements ISequential {
         }
     }
 
-    @SneakyThrows
-    private GenbankRecord Parse(String file) {
+    private GenbankRecord Parse(String file) throws IOException {
         GenbankRecord record = new GenbankRecord();
         BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
         record.Parse(reader);
@@ -170,39 +160,7 @@ public class ExecutorServiceCollectorVersion implements ISequential {
     }
 
     private Match PredictPromoter(NucleotideSequence upStreamRegion) {
-        return BioPatterns.getBestMatch(sigma70_pattern.get(), upStreamRegion.toString());
-    }
-
-
-    private static final Object LOCK = new Object();
-
-    @Getter
-    @RequiredArgsConstructor
-    private class DataContainer implements Callable<PredictionContainer> {
-        private final Gene gene;
-        private final Gene referenceGene;
-        private final NucleotideSequence nucleotides;
-        private final String name;
-
-        @Override
-        public PredictionContainer call() throws Exception {
-            if (Homologous(gene.sequence, referenceGene.sequence)) {
-                NucleotideSequence upStreamRegion = GetUpstreamRegion(nucleotides, gene);
-                Match prediction = PredictPromoter(upStreamRegion);
-
-                if (prediction != null) {
-                    return new PredictionContainer(prediction, name);
-                }
-            }
-            return null;
-        }
-    }
-
-    @Getter
-    @RequiredArgsConstructor
-    private static class PredictionContainer {
-        private final Match prediction;
-        private final String name;
+        return BioPatterns.getBestMatch(sigma70_pattern, upStreamRegion.toString());
     }
 
 

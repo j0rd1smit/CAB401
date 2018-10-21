@@ -1,9 +1,8 @@
-package qut.final_versions;
+package qut.parallel_versions;
 
 import lombok.Getter;
 import qut.AbstractFunctionalTest;
 import qut.ISequential;
-import qut.Sequential;
 
 /**
  * TODO Explanation

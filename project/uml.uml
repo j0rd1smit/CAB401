@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement />
+  <nodes>
+    <node x="0.0" y="358.0">qut.Sigma70Definition</node>
+    <node x="300.0578703703703" y="168.0">qut.NucleotideSequence</node>
+    <node x="429.85787037037034" y="0.0">qut.Gene</node>
+    <node x="632.5578703703703" y="358.0">qut.BioPatterns</node>
+    <node x="373.5578703703703" y="336.0">qut.GenbankRecord</node>
+    <node x="929.5578703703703" y="336.0">jaligner.BLOSUM62</node>
+    <node x="168.0" y="358.0">jaligner.SmithWatermanGotoh</node>
+    <node x="389.5550925925926" y="544.0">qut.Sequential</node>
+    <node x="760.5578703703703" y="292.0">qut.Sigma70Consensus</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="qut.GenbankRecord" target="qut.Gene">
+      <point x="95.60000000000002" y="-37.0" />
+      <point x="588.6578703703703" y="267.0" />
+      <point x="552.55" y="267.0" />
+      <point x="552.55" y="148.0" />
+      <point x="588.1078703703704" y="148.0" />
+      <point x="52.75" y="59.0" />
+    </edge>
+    <edge source="qut.Sequential" target="qut.GenbankRecord">
+      <point x="-23.0" y="-59.0" />
+      <point x="516.0550925925926" y="474.0" />
+      <point x="433.3078703703703" y="474.0" />
+      <point x="-59.75" y="37.0" />
+    </edge>
+    <edge source="qut.NucleotideSequence" target="qut.Gene">
+      <point x="0.0" y="-37.0" />
+      <point x="384.0578703703703" y="148.0" />
+      <point x="482.60787037037034" y="148.0" />
+      <point x="-52.75" y="59.0" />
+    </edge>
+    <edge source="qut.GenbankRecord" target="qut.NucleotideSequence">
+      <point x="-47.80000000000001" y="-37.0" />
+      <point x="445.25787037037037" y="267.0" />
+      <point x="447.0578703703703" y="267.0" />
+      <point x="63.0" y="37.0" />
+    </edge>
+    <edge source="qut.Sequential" target="qut.Gene">
+      <point x="-115.0" y="-59.0" />
+      <point x="424.0550925925926" y="514.0" />
+      <point x="157.5" y="514.0" />
+      <point x="157.5" y="138.0" />
+      <point x="447.44120370370365" y="138.0" />
+      <point x="-87.91666666666666" y="59.0" />
+    </edge>
+    <edge source="qut.Sequential" target="qut.BioPatterns">
+      <point x="23.0" y="-59.0" />
+      <point x="562.0550925925926" y="474.0" />
+      <point x="686.5578703703703" y="474.0" />
+      <point x="0.0" y="15.0" />
+    </edge>
+    <edge source="qut.Sequential" target="jaligner.BLOSUM62">
+      <point x="138.0" y="-59.0" />
+      <point x="677.0550925925926" y="524.0" />
+      <point x="1007.0578703703703" y="524.0" />
+      <point x="0.0" y="37.0" />
+    </edge>
+    <edge source="qut.Sequential" target="qut.NucleotideSequence">
+      <point x="-69.0" y="-59.0" />
+      <point x="470.0550925925926" y="494.0" />
+      <point x="344.5" y="494.0" />
+      <point x="344.5" y="267.0" />
+      <point x="321.0578703703703" y="267.0" />
+      <point x="-63.0" y="37.0" />
+    </edge>
+    <edge source="qut.Sequential" target="qut.Sigma70Consensus">
+      <point x="92.0" y="-59.0" />
+      <point x="631.0550925925926" y="504.0" />
+      <point x="883.8912037037037" y="504.0" />
+      <point x="49.33333333333337" y="81.0" />
+    </edge>
+    <edge source="qut.Sequential" target="qut.Sigma70Definition">
+      <point x="-138.0" y="-59.0" />
+      <point x="401.0550925925926" y="524.0" />
+      <point x="73.5" y="524.0" />
+      <point x="0.0" y="15.0" />
+    </edge>
+    <edge source="qut.Sequential" target="jaligner.SmithWatermanGotoh">
+      <point x="-92.0" y="-59.0" />
+      <point x="447.0550925925926" y="504.0" />
+      <point x="251.0" y="504.0" />
+      <point x="0.0" y="15.0" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="0.5328358208955224" x="995.0" y="591.8207282913165" />
+  <SelectedNodes />
+  <Categories>
+    <Category>Fields</Category>
+  </Categories>
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+

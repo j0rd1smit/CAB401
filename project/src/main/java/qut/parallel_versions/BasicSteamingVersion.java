@@ -1,4 +1,4 @@
-package qut.final_versions;
+package qut.parallel_versions;
 
 import edu.au.jacobi.pattern.Match;
 import edu.au.jacobi.pattern.Series;
@@ -13,6 +13,8 @@ import qut.*;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
 
 /**
  * TODO Explanation
@@ -62,7 +64,7 @@ public class BasicSteamingVersion implements ISequential {
             }
         }
 
-        dataContainers.parallelStream()
+       dataContainers.parallelStream()
                 .filter(dataContainer -> Homologous(dataContainer.getGene().sequence, dataContainer.getReferenceGene().sequence))
                 .collect(Collectors.toList())
                 .forEach(dataContainer -> {
